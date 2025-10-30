@@ -83,7 +83,7 @@ function App() {
           element: <AuthenticatedRoute element={<Home />} />,
         },
         {
-          path: "/users/:userId",
+          path: "/users/:id",
           element: <AuthenticatedRoute element={<User />} />,
         },
 

@@ -71,6 +71,18 @@ export const attendanceSlice = createApi({
       ],
     }),
 
+    // NEW: Get single user's attendance (ADMIN ONLY) ✅
+    getUserAttendance: builder.query({
+      query: ({ userId, page = 1, size = 10, month }) => {
+        let url = `/user/${userId}?page=${page}&size=${size}`;
+        if (month) url += `&month=${month}`;
+        return { url, method: "GET" };
+      },
+      providesTags: (result, error, { userId }) => [
+        { type: "Attendance", id: `USER_${userId}` },
+      ],
+    }),
+
     // Get today's attendance
     getTodayAttendance: builder.query({
       query: ({ page = 1, size = 10 } = {}) => ({
@@ -130,6 +142,7 @@ export const {
   // Student hooks
   useScanQRMutation,
   useMyAttendanceQuery,
+  useGetUserAttendanceQuery,
 
   // Additional
   useGetAttendanceByIdQuery,

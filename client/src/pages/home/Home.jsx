@@ -237,7 +237,7 @@ function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8 mt-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8 ">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -252,19 +252,21 @@ function Home() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-600 text-sm mb-1">Total Classes</p>
-                <p className="text-3xl font-bold text-slate-800">
-                  {data?.content?.length || 0}
-                </p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Users className="w-6 h-6 text-blue-600" />
+          {currentUser.role === "ADMIN" && (
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-slate-600 text-sm mb-1">Total Classes</p>
+                  <p className="text-3xl font-bold text-slate-800">
+                    {data?.content?.length || 0}
+                  </p>
+                </div>
+                <div className="bg-blue-100 p-3 rounded-lg">
+                  <Users className="w-6 h-6 text-blue-600" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
             <div className="flex items-center justify-between">
@@ -310,49 +312,53 @@ function Home() {
         </div>
 
         {/* Classes Grid */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">
-            Available Classes
-          </h2>
-          {data?.content?.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.content.map((classItem) => (
-                <button
-                  key={classItem._id}
-                  onClick={() => setSelectedClass(classItem)}
-                  className="bg-white rounded-xl p-6 shadow-sm border-2 border-slate-200 hover:border-blue-500 transition-all duration-200 text-left group"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-600 transition-colors">
-                      <QrCode className="w-6 h-6 text-blue-600 group-hover:text-white transition-colors" />
+        {currentUser.role === "ADMIN" && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-slate-800 mb-4">
+              Available Classes
+            </h2>
+            {data?.content?.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {data.content.map((classItem) => (
+                  <button
+                    key={classItem._id}
+                    onClick={() => setSelectedClass(classItem)}
+                    className="bg-white rounded-xl p-6 shadow-sm border-2 border-slate-200 hover:border-blue-500 transition-all duration-200 text-left group"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-600 transition-colors">
+                        <QrCode className="w-6 h-6 text-blue-600 group-hover:text-white transition-colors" />
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">
-                    {formatClassName(classItem.className)}
-                  </h3>
-                  <p className="text-sm text-slate-600 mb-1">
-                    Created by:{" "}
-                    <span className="font-medium">
-                      {classItem.createdBy?.username}
-                    </span>
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {formatDate(classItem.createdAt)}
-                  </p>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-slate-200">
-              <QrCode className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-600 font-medium">No classes available</p>
-              <p className="text-slate-500 text-sm mt-2">
-                Check back later for attendance classes
-              </p>
-            </div>
-          )}
-        </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">
+                      {formatClassName(classItem.className)}
+                    </h3>
+                    <p className="text-sm text-slate-600 mb-1">
+                      Created by:{" "}
+                      <span className="font-medium">
+                        {classItem.createdBy?.username}
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {formatDate(classItem.createdAt)}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-slate-200">
+                <QrCode className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-600 font-medium">
+                  No classes available
+                </p>
+                <p className="text-slate-500 text-sm mt-2">
+                  Check back later for attendance classes
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* QR Code Modal */}
         {selectedClass && (

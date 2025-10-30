@@ -5,42 +5,33 @@ export const userSlice = createApi({
   reducerPath: "usersApi",
   baseQuery: axiosBaseQuery({ baseUrl: "/users" }),
   tagTypes: ["User"],
-
   endpoints: (builder) => ({
     // Update User
     updateUser: builder.mutation({
-      query: ({ userId, ...userData }) => ({
-        url: `/${userId}`,
+      query: ({ id, ...userData }) => ({
+        url: `/${id}`,
         method: "PUT",
         data: userData,
       }),
-
-      invalidatesTags: (result, error, { userId }) => [
-        { type: "User", id: userId },
-      ],
-    }),
-
-    // Delete User
-    deleteUser: builder.mutation({
-      query: (userId) => ({
-        url: `/${userId}`,
-        method: "DELETE",
-      }),
-
-      invalidatesTags: [{ type: "User", id: "LIST" }],
+      invalidatesTags: (result, error, { id }) => [{ type: "User", id: id }],
     }),
 
     // Get all users with pagination
-    getUsers: builder.query({
-      query: ({ page = 1, size = 10 } = {}) => ({
-        url: `?page=${page}&size=${size}`,
+    getAllUsers: builder.query({
+      query: ({ page = 1, size = 10, search = "", className = "" }) => ({
+        url: "/",
         method: "GET",
+        params: {
+          page,
+          size,
+          ...(search && { search }),
+          ...(className && { className }),
+        },
       }),
-
-      providesTags: (result, error, arg) =>
-        result?.data?.content
+      providesTags: (result) =>
+        result
           ? [
-              ...result.data.content.map(({ id }) => ({ type: "User", id })),
+              ...result.content.map(({ _id }) => ({ type: "User", id: _id })),
               { type: "User", id: "LIST" },
             ]
           : [{ type: "User", id: "LIST" }],
@@ -48,19 +39,17 @@ export const userSlice = createApi({
 
     // Get single User by ID
     getUserById: builder.query({
-      query: (userId) => ({
-        url: `/${userId}`,
+      query: (id) => ({
+        url: `/${id}`,
         method: "GET",
       }),
-
-      providesTags: (result, error, userId) => [{ type: "User", id: userId }],
+      providesTags: (result, error, id) => [{ type: "User", id: id }],
     }),
   }),
 });
 
 export const {
-  useDeleteUserMutation,
+  useGetAllUsersQuery,
   useGetUserByIdQuery,
-  useGetUsersQuery,
   useUpdateUserMutation,
 } = userSlice;

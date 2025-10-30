@@ -7,6 +7,7 @@ const {
   myAttendance,
   getTodayAttendance,
   deleteQR,
+  getUserAttendance,
 } = require("../controllers/attendance.controller");
 const {
   authenticate,
@@ -33,5 +34,6 @@ router.get(
 // STUDENT ROUTES
 router.post("/scan", authenticate, scanQR);
 router.get("/my", authenticate, myAttendance);
+router.get("/user/:userId", authenticate, getUserAttendance);
 
 module.exports = router;

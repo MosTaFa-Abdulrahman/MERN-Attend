@@ -410,12 +410,125 @@ const myAttendance = async (req, res) => {
   }
 };
 
+// GET SINGLE USER'S ATTENDANCE - with pagination and month filter ✅
+const getUserAttendance = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const size = parseInt(req.query.size) || 10;
+    const month = req.query.month; // Format: "YYYY-MM"
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Validate MongoDB ObjectId
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+
+    // Build the query
+    const query = {
+      "attendedStudents.userId": userId,
+    };
+
+    // If month filter is provided, add date range to query
+    if (month) {
+      const monthRegex = /^\d{4}-\d{2}$/;
+      if (!monthRegex.test(month)) {
+        return res.status(400).json({
+          error: "Invalid month format. Use YYYY-MM (e.g., 2025-10)",
+        });
+      }
+
+      const [year, monthNum] = month.split("-").map(Number);
+      const startDate = new Date(year, monthNum - 1, 1);
+      const endDate = new Date(year, monthNum, 0, 23, 59, 59, 999);
+
+      query.createdAt = {
+        $gte: startDate,
+        $lte: endDate,
+      };
+    }
+
+    const attendances = await Attendance.find(query)
+      .populate(
+        "attendedStudents.userId",
+        "username firstName lastName email profilePic className"
+      )
+      .populate("createdBy", "username")
+      .select("className attendedStudents createdAt qrCode createdBy")
+      .sort({ createdAt: -1 });
+
+    // Extract user's attendance records
+    const userRecords = [];
+
+    attendances.forEach((att) => {
+      const userAttendances = att.attendedStudents.filter((s) => {
+        const matchesUser = s.userId._id.toString() === userId.toString();
+
+        if (!matchesUser) return false;
+
+        // If month filter is applied, also filter individual attendance records
+        if (month) {
+          const [year, monthNum] = month.split("-").map(Number);
+          const attendedDate = new Date(s.attendedAt);
+          return (
+            attendedDate.getFullYear() === year &&
+            attendedDate.getMonth() === monthNum - 1
+          );
+        }
+
+        return true;
+      });
+
+      userAttendances.forEach((record) => {
+        userRecords.push({
+          _id: record._id,
+          className: att.className,
+          attendedAt: record.attendedAt,
+          qrCode: att.qrCode,
+          qrCreatedAt: att.createdAt,
+          createdBy: att.createdBy,
+          student: record.userId,
+        });
+      });
+    });
+
+    // Sort by most recent attendance
+    userRecords.sort((a, b) => new Date(b.attendedAt) - new Date(a.attendedAt));
+
+    // Pagination
+    const totalElements = userRecords.length;
+    const totalPages = Math.ceil(totalElements / size);
+    const startIndex = (page - 1) * size;
+    const endIndex = startIndex + size;
+    const content = userRecords.slice(startIndex, endIndex);
+
+    res.status(200).json({
+      userId,
+      student: content.length > 0 ? content[0].student : null,
+      content,
+      page,
+      size,
+      totalElements,
+      totalPages,
+      first: page === 1,
+      last: page === totalPages,
+      ...(month && { month }),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   createQR,
   scanQR,
   getAllQR,
   getAttendedStudentsByClass,
   myAttendance,
+  getUserAttendance,
   getTodayAttendance,
   deleteQR,
 };
