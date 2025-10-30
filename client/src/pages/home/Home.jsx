@@ -24,7 +24,8 @@ function Home() {
   const { currentUser } = useContext(AuthContext);
 
   const { data, isLoading, isFetching } = useGetAttendancesQuery();
-  const [scanQR, { isLoading: isScanning }] = useScanQRMutation();
+  const [scanQR, { isLoading: isScanning, reset: resetScanMutation }] =
+    useScanQRMutation();
 
   const [selectedClass, setSelectedClass] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState("");
@@ -32,8 +33,8 @@ function Home() {
   const [scanning, setScanning] = useState(false);
   const [isProcessingScan, setIsProcessingScan] = useState(false);
   const html5QrCodeRef = useRef(null);
-  const scanProcessedRef = useRef(false); // Track if scan was processed
-  const lastScannedCodeRef = useRef(null); // Track last scanned code
+  const isMountedRef = useRef(true);
+  const processingTimeoutRef = useRef(null);
 
   // Generate QR Code when class is selected
   useEffect(() => {
@@ -59,10 +60,6 @@ function Home() {
   // Start QR Scanner
   const startScanner = async () => {
     try {
-      // Reset scan state when starting
-      scanProcessedRef.current = false;
-      lastScannedCodeRef.current = null;
-
       if (!html5QrCodeRef.current) {
         html5QrCodeRef.current = new Html5Qrcode("qr-reader");
       }
@@ -89,6 +86,7 @@ function Home() {
     if (html5QrCodeRef.current && scanning) {
       try {
         await html5QrCodeRef.current.stop();
+        html5QrCodeRef.current = null;
         setScanning(false);
       } catch (err) {
         console.error(err);
@@ -96,43 +94,55 @@ function Home() {
     }
   };
 
-  // Handle successful scan
+  // Handle successful scan - FIXED VERSION
   const onScanSuccess = async (decodedText) => {
-    // Prevent multiple scans of the same code
-    if (scanProcessedRef.current || isProcessingScan) {
-      console.log("Scan already in progress, ignoring...");
+    // CRITICAL: Prevent multiple simultaneous scans
+    if (isProcessingScan) {
       return;
     }
 
-    // Prevent scanning the same code multiple times
-    if (lastScannedCodeRef.current === decodedText) {
-      console.log("Same code already scanned, ignoring...");
-      return;
+    // Clear any existing timeout
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
     }
 
-    // Mark as processing immediately
-    scanProcessedRef.current = true;
-    lastScannedCodeRef.current = decodedText;
     setIsProcessingScan(true);
 
-    // Stop scanner immediately to prevent multiple scans
+    // Stop scanner IMMEDIATELY
     await stopScanner();
 
     try {
       const result = await scanQR({ qrCode: decodedText }).unwrap();
-      toast.success(result.message || "Attendance recorded successfully! ✅");
+
+      // Only show toast if component is still mounted
+      if (isMountedRef.current) {
+        toast.success(
+          result.message || "Attendance recorded successfully! ✅",
+          {
+            id: "scan-success", // Prevent duplicate toasts
+            duration: 3000,
+          }
+        );
+      }
+
+      // Close scanner after successful scan
       setShowScanner(false);
-    } catch (error) {
-      const errorMsg = error?.data?.error || "Failed to record attendance";
-      toast.error(errorMsg);
-      setShowScanner(false);
-    } finally {
       setIsProcessingScan(false);
-      // Reset after a delay to allow new scans
-      setTimeout(() => {
-        scanProcessedRef.current = false;
-        lastScannedCodeRef.current = null;
-      }, 2000);
+
+      // Reset mutation state to prevent issues
+      resetScanMutation();
+    } catch (error) {
+      if (isMountedRef.current) {
+        const errorMsg = error?.data?.error || "Failed to record attendance";
+        toast.error(errorMsg, {
+          id: "scan-error", // Prevent duplicate toasts
+          duration: 4000,
+        });
+      }
+
+      setShowScanner(false);
+      setIsProcessingScan(false);
+      resetScanMutation();
     }
   };
 
@@ -142,8 +152,14 @@ function Home() {
 
   // Cleanup on unmount
   useEffect(() => {
+    isMountedRef.current = true;
+
     return () => {
+      isMountedRef.current = false;
       stopScanner();
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -152,9 +168,23 @@ function Home() {
     await stopScanner();
     setShowScanner(false);
     setIsProcessingScan(false);
-    scanProcessedRef.current = false;
-    lastScannedCodeRef.current = null;
+    resetScanMutation();
+
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
+    }
   };
+
+  // Reset scanner state when modal closes
+  useEffect(() => {
+    if (!showScanner) {
+      setScanning(false);
+      setIsProcessingScan(false);
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current = null;
+      }
+    }
+  }, [showScanner]);
 
   // Format class name
   const formatClassName = (className) => {

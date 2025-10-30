@@ -44,6 +44,10 @@ export const attendanceSlice = createApi({
               { type: "Attendance", id: "LIST" },
             ]
           : [{ type: "Attendance", id: "LIST" }],
+      // CRITICAL FIX: Prevent refetch on window focus
+      refetchOnMountOrArgChange: false,
+      refetchOnFocus: false,
+      refetchOnReconnect: false,
     }),
 
     // GET ATTENDED STUDENTS BY CLASS NAME (ADMIN) - with pagination, month filter, and search ✅
@@ -78,16 +82,18 @@ export const attendanceSlice = createApi({
 
     // STUDENT ENDPOINTS
 
-    // Scan QR Code
+    // Scan QR Code - FIXED: Don't invalidate LIST tag to prevent refetch loop
     scanQR: builder.mutation({
       query: (data) => ({
         url: "/scan",
         method: "POST",
         data,
       }),
+      // CRITICAL FIX: Only invalidate user-specific data, NOT the main list
       invalidatesTags: [
         { type: "Attendance", id: "MY" },
         { type: "Attendance", id: "TODAY" },
+        // Removed: { type: "Attendance", id: "LIST" } - This was causing the loop!
       ],
     }),
 
