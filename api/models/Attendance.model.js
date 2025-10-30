@@ -46,8 +46,17 @@ const AttendanceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for faster queries
-AttendanceSchema.index({ qrCode: 1 });
-AttendanceSchema.index({ className: 1 });
+// In your AttendanceSchema, add this compound index to prevent duplicate daily attendance
+AttendanceSchema.index(
+  { qrCode: 1, "attendedStudents.userId": 1 },
+  { unique: false }
+);
+
+// Better: Add a method to check if student attended today
+AttendanceSchema.methods.hasAttendedToday = function (userId) {
+  return this.attendedStudents.some(
+    (s) => s.userId.toString() === userId.toString() && isToday(s.attendedAt)
+  );
+};
 
 module.exports = mongoose.model("Attendance", AttendanceSchema);

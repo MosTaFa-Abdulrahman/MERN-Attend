@@ -30,6 +30,7 @@ function Home() {
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [isProcessingScan, setIsProcessingScan] = useState(false);
   const html5QrCodeRef = useRef(null);
 
   // Generate QR Code when class is selected
@@ -70,6 +71,7 @@ function Home() {
         onScanFailure
       );
       setScanning(true);
+      setIsProcessingScan(false);
     } catch (err) {
       toast.error("Failed to start camera. Please allow camera access.");
       console.error(err);
@@ -90,17 +92,25 @@ function Home() {
 
   // Handle successful scan
   const onScanSuccess = async (decodedText) => {
+    // Prevent multiple simultaneous scans
+    if (isProcessingScan) {
+      console.log("Already processing a scan, ignoring...");
+      return;
+    }
+
+    setIsProcessingScan(true);
     await stopScanner();
 
     try {
       const result = await scanQR({ qrCode: decodedText }).unwrap();
       toast.success(result.message || "Attendance recorded successfully! ✅");
       setShowScanner(false);
+      setIsProcessingScan(false);
     } catch (error) {
       toast.error(error?.data?.error || "Failed to record attendance");
-      setTimeout(() => {
-        startScanner();
-      }, 2000);
+      setIsProcessingScan(false);
+      setShowScanner(false);
+      // Don't restart scanner - let user manually try again
     }
   };
 
@@ -119,6 +129,7 @@ function Home() {
   const closeScanner = async () => {
     await stopScanner();
     setShowScanner(false);
+    setIsProcessingScan(false);
   };
 
   // Format class name
@@ -215,11 +226,11 @@ function Home() {
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <button
             onClick={() => setShowScanner(true)}
-            disabled={isScanning}
+            disabled={isScanning || isProcessingScan}
             className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Scan className="w-5 h-5" />
-            Scan QR Code
+            {isProcessingScan ? "Processing..." : "Scan QR Code"}
           </button>
         </div>
 
@@ -323,7 +334,8 @@ function Home() {
             <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl relative">
               <button
                 onClick={closeScanner}
-                className="absolute top-4 right-4 p-2 bg-white hover:bg-slate-100 rounded-lg transition-colors z-10"
+                disabled={isProcessingScan}
+                className="absolute top-4 right-4 p-2 bg-white hover:bg-slate-100 rounded-lg transition-colors z-10 disabled:opacity-50"
               >
                 <X className="w-5 h-5 text-slate-600" />
               </button>
@@ -336,7 +348,9 @@ function Home() {
                   Scan QR Code
                 </h3>
                 <p className="text-slate-600">
-                  Position the QR code within the frame
+                  {isProcessingScan
+                    ? "Processing attendance..."
+                    : "Position the QR code within the frame"}
                 </p>
               </div>
 
@@ -346,7 +360,7 @@ function Home() {
                   className="rounded-xl overflow-hidden border-4 border-blue-500"
                 ></div>
 
-                {!scanning && (
+                {!scanning && !isProcessingScan && (
                   <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-xl">
                     <button
                       onClick={startScanner}
@@ -355,6 +369,17 @@ function Home() {
                       <Scan className="w-5 h-5" />
                       Start Camera
                     </button>
+                  </div>
+                )}
+
+                {isProcessingScan && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-900 bg-opacity-75 rounded-xl">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="w-12 h-12 animate-spin text-white" />
+                      <p className="text-white font-medium">
+                        Recording attendance...
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

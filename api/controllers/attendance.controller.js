@@ -269,7 +269,7 @@ const getTodayAttendance = async (req, res) => {
   }
 };
 
-// SCAN QR CODE (USER) - ONE SCAN PER DAY
+// SCAN QR CODE (USER) - ONE SCAN PER DAY ✅
 const scanQR = async (req, res) => {
   try {
     const { qrCode } = req.body;
@@ -288,29 +288,70 @@ const scanQR = async (req, res) => {
       });
     }
 
-    // Check if student already attended TODAY
-    const attendedToday = attendance.attendedStudents.some(
-      (s) =>
-        s.userId.toString() === student._id.toString() && isToday(s.attendedAt)
-    );
+    // Use atomic operation to prevent race conditions
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
-    if (attendedToday) {
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Check if already attended today
+    const alreadyAttended = await Attendance.findOne({
+      qrCode: qrCode,
+      attendedStudents: {
+        $elemMatch: {
+          userId: student._id,
+          attendedAt: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+      },
+    });
+
+    if (alreadyAttended) {
       return res.status(400).json({
         error: "You already attended today! ✅ Come back tomorrow 😊",
       });
     }
 
-    // Add student attendance for today
-    attendance.attendedStudents.push({
-      userId: student._id,
-      attendedAt: new Date(),
-    });
+    // Use findOneAndUpdate with $push to atomically add attendance
+    const updatedAttendance = await Attendance.findOneAndUpdate(
+      {
+        qrCode: qrCode,
+        // Double-check to prevent race condition
+        attendedStudents: {
+          $not: {
+            $elemMatch: {
+              userId: student._id,
+              attendedAt: {
+                $gte: startOfDay,
+                $lte: endOfDay,
+              },
+            },
+          },
+        },
+      },
+      {
+        $push: {
+          attendedStudents: {
+            userId: student._id,
+            attendedAt: new Date(),
+          },
+        },
+      },
+      { new: true }
+    );
 
-    await attendance.save();
+    if (!updatedAttendance) {
+      return res.status(400).json({
+        error: "You already attended today! ✅ Come back tomorrow 😊",
+      });
+    }
 
     res.status(200).json({
       message: "Attendance success ✅",
-      className: attendance.className,
+      className: updatedAttendance.className,
       attendedAt: new Date(),
     });
   } catch (error) {
