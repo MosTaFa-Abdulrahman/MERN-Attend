@@ -32,7 +32,8 @@ function Home() {
   const [scanning, setScanning] = useState(false);
   const [isProcessingScan, setIsProcessingScan] = useState(false);
   const html5QrCodeRef = useRef(null);
-  const scanLockRef = useRef(false); // Prevent multiple scans
+  const scanProcessedRef = useRef(false); // Track if scan was processed
+  const lastScannedCodeRef = useRef(null); // Track last scanned code
 
   // Generate QR Code when class is selected
   useEffect(() => {
@@ -58,6 +59,10 @@ function Home() {
   // Start QR Scanner
   const startScanner = async () => {
     try {
+      // Reset scan state when starting
+      scanProcessedRef.current = false;
+      lastScannedCodeRef.current = null;
+
       if (!html5QrCodeRef.current) {
         html5QrCodeRef.current = new Html5Qrcode("qr-reader");
       }
@@ -93,25 +98,41 @@ function Home() {
 
   // Handle successful scan
   const onScanSuccess = async (decodedText) => {
-    // Prevent multiple simultaneous scans
-    if (isProcessingScan) {
-      console.log("Already processing a scan, ignoring...");
+    // Prevent multiple scans of the same code
+    if (scanProcessedRef.current || isProcessingScan) {
+      console.log("Scan already in progress, ignoring...");
       return;
     }
 
+    // Prevent scanning the same code multiple times
+    if (lastScannedCodeRef.current === decodedText) {
+      console.log("Same code already scanned, ignoring...");
+      return;
+    }
+
+    // Mark as processing immediately
+    scanProcessedRef.current = true;
+    lastScannedCodeRef.current = decodedText;
     setIsProcessingScan(true);
+
+    // Stop scanner immediately to prevent multiple scans
     await stopScanner();
 
     try {
       const result = await scanQR({ qrCode: decodedText }).unwrap();
       toast.success(result.message || "Attendance recorded successfully! ✅");
       setShowScanner(false);
-      setIsProcessingScan(false);
     } catch (error) {
-      toast.error(error?.data?.error || "Failed to record attendance");
-      setIsProcessingScan(false);
+      const errorMsg = error?.data?.error || "Failed to record attendance";
+      toast.error(errorMsg);
       setShowScanner(false);
-      // Don't restart scanner - let user manually try again
+    } finally {
+      setIsProcessingScan(false);
+      // Reset after a delay to allow new scans
+      setTimeout(() => {
+        scanProcessedRef.current = false;
+        lastScannedCodeRef.current = null;
+      }, 2000);
     }
   };
 
@@ -131,6 +152,8 @@ function Home() {
     await stopScanner();
     setShowScanner(false);
     setIsProcessingScan(false);
+    scanProcessedRef.current = false;
+    lastScannedCodeRef.current = null;
   };
 
   // Format class name
