@@ -32,6 +32,7 @@ function Home() {
   const [scanning, setScanning] = useState(false);
   const [isProcessingScan, setIsProcessingScan] = useState(false);
   const html5QrCodeRef = useRef(null);
+  const scanLockRef = useRef(false); // Prevent multiple scans
 
   // Generate QR Code when class is selected
   useEffect(() => {
