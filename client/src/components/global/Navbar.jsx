@@ -206,9 +206,20 @@ export default function Navbar() {
             <div className="ml-4 flex items-center space-x-2">
               {currentUser ? (
                 <div className="flex items-center space-x-3">
-                  <NavLink to={`/users/${currentUser._id}`}>
-                    <span className="text-sm text-gray-700">
-                      Welcome, {currentUser.firstName || currentUser.lastName}
+                  <NavLink
+                    to={`/users/${currentUser._id}`}
+                    className="flex items-center space-x-2"
+                  >
+                    <img
+                      src={
+                        currentUser?.profilePic ||
+                        "https://cdn-icons-png.flaticon.com/128/3177/3177440.png"
+                      }
+                      alt={currentUser?.firstName || "User"}
+                      className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                    />
+                    <span className="text-sm text-gray-700 font-medium">
+                      {currentUser.firstName || currentUser.lastName}
                     </span>
                   </NavLink>
                   <button
@@ -324,15 +335,26 @@ export default function Navbar() {
           {/* Mobile Auth Section */}
           <div className="pt-4 mt-4 border-t border-gray-200">
             {currentUser ? (
-              <div className="space-y-2">
-                <NavLink to={`/users/${currentUser._id}`}>
-                  <div className="px-3 py-2 text-sm text-gray-700">
-                    Welcome, {currentUser.firstName || currentUser.lastName}
-                  </div>
+              <div className="flex items-center space-x-3">
+                <NavLink
+                  to={`/users/${currentUser._id}`}
+                  className="flex items-center space-x-2"
+                >
+                  <img
+                    src={
+                      currentUser?.profilePic ||
+                      "https://cdn-icons-png.flaticon.com/128/3177/3177440.png"
+                    }
+                    alt={currentUser?.firstName || "User"}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                  />
+                  <span className="text-sm text-gray-700 font-medium">
+                    {currentUser.firstName || currentUser.lastName}
+                  </span>
                 </NavLink>
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  className="flex items-center space-x-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Logout</span>

@@ -214,7 +214,7 @@ function ClassNames() {
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 hover:scale-105"
             >
               <Plus className="w-5 h-5" />
-              Create New Class
+              Create
             </button>
           </div>
         </div>
